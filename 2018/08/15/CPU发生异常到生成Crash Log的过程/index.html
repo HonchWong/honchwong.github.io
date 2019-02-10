@@ -87,12 +87,12 @@
 <meta property="og:site_name" content="honchwong">
 <meta property="og:description" content="什么是异常很多介绍操作系统的书在讲解“操作系统的运行机制”的时候都会提到“现代操作系统是靠中断驱动的软件”，这句话怎么理解？ 中断是指CPU对系统发生的某个事件做出的一种反应，CPU暂停正在执行的程序，保留现场后转去执行相应的处理程序，处理完该事件后再返回断点继续执行被“打断”的程序。 而引入中断技术的初衷是提高多道程序运行环境中CPU的利用率，比如CPU可以在I/O的执行过程中去执行其他指令，不">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/1OfXzk0RWT*5eExl0A5ilUXtBXPMYkyQBWwJwE5akK4!/b/dC8BAAAAAAAA&bo=VwY4BAAAAAADB08!&rf=viewer_4">
-<meta property="og:updated_time" content="2019-02-09T14:47:06.908Z">
+<meta property="og:image" content="http://b303.photo.store.qq.com/psb?/V10JaO4w40EHz4/1OfXzk0RWT*5eExl0A5ilUXtBXPMYkyQBWwJwE5akK4!/b/dC8BAAAAAAAA&bo=VwY4BAAAAAADB08!&rf=viewer_4">
+<meta property="og:updated_time" content="2019-02-10T12:21:16.552Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="CPU发生异常到生成Crash Log的过程">
 <meta name="twitter:description" content="什么是异常很多介绍操作系统的书在讲解“操作系统的运行机制”的时候都会提到“现代操作系统是靠中断驱动的软件”，这句话怎么理解？ 中断是指CPU对系统发生的某个事件做出的一种反应，CPU暂停正在执行的程序，保留现场后转去执行相应的处理程序，处理完该事件后再返回断点继续执行被“打断”的程序。 而引入中断技术的初衷是提高多道程序运行环境中CPU的利用率，比如CPU可以在I/O的执行过程中去执行其他指令，不">
-<meta name="twitter:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/1OfXzk0RWT*5eExl0A5ilUXtBXPMYkyQBWwJwE5akK4!/b/dC8BAAAAAAAA&bo=VwY4BAAAAAADB08!&rf=viewer_4">
+<meta name="twitter:image" content="http://b303.photo.store.qq.com/psb?/V10JaO4w40EHz4/1OfXzk0RWT*5eExl0A5ilUXtBXPMYkyQBWwJwE5akK4!/b/dC8BAAAAAAAA&bo=VwY4BAAAAAADB08!&rf=viewer_4">
 
 
 
@@ -348,8 +348,7 @@
 <p>虽然我也没找到问题的具体原因，但摸出了个解决办法，就是在虚拟机启动时同时按下Option、Command、P 和 R，以reset NVRAM，将会进入到恢复模式，使用终端工具关闭虚拟机的SIP ，即输入命令csrutil disable，然后重启，启动后再走一遍 “内核替换”-&gt; “设置boot-args” -&gt; “清除kext缓存” -&gt; “重启虚拟机” -&gt; “主机连接虚拟机” 的流程，这时将会有百分之七十的概率能让虚拟机正常启动并可调试，如果不行就再试一次。</p>
 <p>注：我使用的MacOs 版本是10.13.5，对应的XNU是4570.61.1，对应版本的源码没有放出，对比了前几个版本，我需要参考的源码都没有变动，所以参考源码是github上的<a href="https://github.com/apple/darwin-xnu/" target="_blank" rel="noopener">xnu-4570.1.46</a></p>
 <h5 id="跟踪CPU异常"><a href="#跟踪CPU异常" class="headerlink" title="跟踪CPU异常"></a>跟踪CPU异常</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">int main(int argc, const char * argv[]) &#123;</span><br><span class="line">    char c = getchar();</span><br><span class="line">    int *pi = (int*)0x00001111;</span><br><span class="line">    *pi = 17;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>首先使用gcc来把上面这个程序编译成二进制可执行程序，然后运行。在程序等待键盘输入的时候，可以用ps命令查看进程PID。</p>
-<p>todo 图片</p>
+<p>首先使用gcc来把上面这个程序编译成二进制可执行程序，然后运行。在程序等待键盘输入的时候，可以用ps命令查看进程PID是352。</p>
 <p>在运行程序之前我在<code>osfmk/kern/exception.c</code> 的 <code>exception_triage_thread()</code> 函数实现处打了三个断点</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">breakpoint set --file exception.c --line 447</span><br><span class="line">breakpoint set --file exception.c --line 459</span><br><span class="line">breakpoint set --file exception.c --line 472</span><br></pre></td></tr></table></figure>
 <p>447、459、472 分别是往 thread 层、task 层、host 层的异常端口数组投递异常，对应以下三行代码</p>
@@ -382,7 +381,7 @@
 <p>可以从函数调用栈看出，这也是设置AST 导致的，此时的<code>exception=13（EXC_CORPSE_NOTIFY）</code>，表示进程状态是僵尸状态，也就相当于死了。</p>
 <p>通过打断点可以看出一个用户态应用程序非法访问内存导致的CPU异常，将会依次用到 <code>EXC_BAD_ACCESS、EXC_CRASH、EXC_CORPSE_NOTIFY</code>这三个Mach异常类型。</p>
 <h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><p>(todo 换图片)<br>CPU异常 -&gt; Mach异常 -&gt; BSD层的Unix信号 -&gt; 用户态App Handler / 系统生成Crash Log 的流程可以简单粗略地画一个图</p>
-<p><img src="http://m.qpic.cn/psb?/V10JaO4w40EHz4/1OfXzk0RWT*5eExl0A5ilUXtBXPMYkyQBWwJwE5akK4!/b/dC8BAAAAAAAA&amp;bo=VwY4BAAAAAADB08!&amp;rf=viewer_4" alt="s"></p>
+<p><img src="http://b303.photo.store.qq.com/psb?/V10JaO4w40EHz4/1OfXzk0RWT*5eExl0A5ilUXtBXPMYkyQBWwJwE5akK4!/b/dC8BAAAAAAAA&amp;bo=VwY4BAAAAAADB08!&amp;rf=viewer_4" alt="s"></p>
 <h4 id="异常收集"><a href="#异常收集" class="headerlink" title="异常收集"></a>异常收集</h4><p>虽然iOS \ macOS 都提供了 ReportCrash用来收集Crash 信息，Debug模式下也提供了 lldb 的debugserver 捕获程序异常，但App 发版上架后出现Crash 不方便开发者收集，比如在iOS上需要用户允许与开发者共享分析数据，开发者才可以从 iTunes Connect 查看到Crash 上报信息，不然则要拿到发生Crash的设备才能查看到Crash信息。</p>
 <p>为了方便快速定位、解决Crash，可以借鉴 ReportCrash 或 debugserver 捕获异常的思路来做一个三方的Crash 收集的框架，收集思路主要有三种：</p>
 <ul>
