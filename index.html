@@ -365,16 +365,26 @@
 <li>内存不足</li>
 <li>进程退出</li>
 <li>调用这两个函数<ul>
-<li><figure class="highlight plain"><figcaption><span>mmap_size, MS_ASYNC) ``` 同步，异步写回磁盘 </span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">	- ``` munmap(mmap_ptr, mmap_size) ```    解除一个map，内容会写回磁盘</span><br><span class="line">- 不设置 MAP_NOSYNC 情况下 30s-60s(仅限FreeBSD)</span><br><span class="line"></span><br><span class="line">##### xlog 还保证了 **安全性** 和 **容错性**</span><br><span class="line"></span><br><span class="line">通过压缩和加密可以保证日志信息非明文写入磁盘，同时减少所占用的 mmap 的大小。策略是</span><br><span class="line"></span><br><span class="line">&gt; 在写进逻辑内存之前就把日志先进行压缩，再进行加密，最后再写入到逻辑内存中</span><br><span class="line"></span><br><span class="line">微信选择的具体压缩方案可以参考文章 [https://cloud.tencent.com/developer/article/1071610](https://cloud.tencent.com/developer/article/1071610) ，简单来说就是 能够保证日志**容错性**的流式压缩，</span><br><span class="line"></span><br><span class="line">&gt; 即使压缩单位中有部分数据损坏，因为是流式压缩，并不影响这个单位中损坏数据之前的日志的解压，只会影响这个单位中这个损坏数据之后的日志。</span><br><span class="line"></span><br><span class="line">所以一句话总结xlog 为什么具有**安全性**、**流畅性**、**完整性**、**容错性** 的优点</span><br><span class="line"></span><br><span class="line">&gt; 使用流式压缩方式对单行日志进行压缩，压缩加密后写进作为 log 中间 buffer的 mmap 中，当 mmap 中的数据到达一定大小后再写进磁盘文件中</span><br><span class="line"></span><br><span class="line">另外mmap 相关的API 如下，参考开源的XLog，你也可以给团队定制基于mmap的日志采集组件</span><br></pre></td></tr></table></figure>
-</li>
+<li><code>msync(mmap_ptr, mmap_size, MS_ASYNC)</code> 同步，异步写回磁盘 </li>
+<li><code>munmap(mmap_ptr, mmap_size)</code>    解除一个map，内容会写回磁盘</li>
 </ul>
 </li>
+<li>不设置 MAP_NOSYNC 情况下 30s-60s(仅限FreeBSD)</li>
 </ul>
-<p>FILE <em>fp = fopen(file_path, “wb+”);<br>file_num = fileno(fp);<br>ftruncate(file_num, size);      // 调整size<br>char </em>mmap_ptr = (char *)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, file_num, 0);</p>
-<p>// 然后就可以对 mmap_ptr 进行读写了</p>
-<p>munmap(mmap_ptr, mmap_size);    // 解除一个map，内容会写回磁盘<br>msync(mmap_ptr, mmap_size, MS_ASYNC);  // 同步，异步写回磁盘</p>
-<p>扩容办法：先解除munmap，调大文件大小，重新调 mmap 映射即可</p>
-<p><code>`</code></p>
+<h5 id="xlog-还保证了-安全性-和-容错性"><a href="#xlog-还保证了-安全性-和-容错性" class="headerlink" title="xlog 还保证了 安全性 和 容错性"></a>xlog 还保证了 <strong>安全性</strong> 和 <strong>容错性</strong></h5><p>通过压缩和加密可以保证日志信息非明文写入磁盘，同时减少所占用的 mmap 的大小。策略是</p>
+<blockquote>
+<p>在写进逻辑内存之前就把日志先进行压缩，再进行加密，最后再写入到逻辑内存中</p>
+</blockquote>
+<p>微信选择的具体压缩方案可以参考文章 <a href="https://cloud.tencent.com/developer/article/1071610" target="_blank" rel="noopener">https://cloud.tencent.com/developer/article/1071610</a> ，简单来说就是 能够保证日志<strong>容错性</strong>的流式压缩，</p>
+<blockquote>
+<p>即使压缩单位中有部分数据损坏，因为是流式压缩，并不影响这个单位中损坏数据之前的日志的解压，只会影响这个单位中这个损坏数据之后的日志。</p>
+</blockquote>
+<p>所以一句话总结xlog 为什么具有<strong>安全性</strong>、<strong>流畅性</strong>、<strong>完整性</strong>、<strong>容错性</strong> 的优点</p>
+<blockquote>
+<p>使用流式压缩方式对单行日志进行压缩，压缩加密后写进作为 log 中间 buffer的 mmap 中，当 mmap 中的数据到达一定大小后再写进磁盘文件中</p>
+</blockquote>
+<p>另外mmap 相关的API 如下，参考开源的XLog，你也可以给团队定制基于mmap的日志采集组件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">FILE *fp = fopen(file_path, &quot;wb+&quot;);</span><br><span class="line">file_num = fileno(fp);</span><br><span class="line">ftruncate(file_num, size);      // 调整size</span><br><span class="line">char *mmap_ptr = (char *)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, file_num, 0);</span><br><span class="line"></span><br><span class="line">// 然后就可以对 mmap_ptr 进行读写了</span><br><span class="line"></span><br><span class="line">munmap(mmap_ptr, mmap_size);    // 解除一个map，内容会写回磁盘</span><br><span class="line">msync(mmap_ptr, mmap_size, MS_ASYNC);  // 同步，异步写回磁盘</span><br><span class="line"></span><br><span class="line">扩容办法：先解除munmap，调大文件大小，重新调 mmap 映射即可</span><br></pre></td></tr></table></figure>
 <h4 id="2-2-2-传输部分：使用Spring-Boot-快速开发Web服务器"><a href="#2-2-2-传输部分：使用Spring-Boot-快速开发Web服务器" class="headerlink" title="2.2.2 传输部分：使用Spring Boot 快速开发Web服务器"></a>2.2.2 传输部分：使用Spring Boot 快速开发Web服务器</h4><p>在网上有很多介绍Spring Boot的文章，蚂蚁金服的一位前辈写了篇 <a href="https://jimmysong.io/posts/spring-boot-quick-start-guide/" target="_blank" rel="noopener">Spring Boot快速开始指南</a> 我看还不错，介绍了Spring-Boot的知识点线路图和基本概念，还有如何快速创建一个Spring Boot 应用，由于我也是照葫芦画瓢，只是使用Spring Boot提供了简单的文件上传和下载功能，暂时无法在这一块深入介绍自己的经验，不过日志系统对应的Spring Boot部分我已经放到了github，感兴趣可以clone 下来跑跑看 <a href="https://github.com/HonchWong/HCRDA-SpringBoot.git" target="_blank" rel="noopener">https://github.com/HonchWong/HCRDA-SpringBoot.git</a></p>
 <p>项目名字是RDA，也就是研发助手的英文，意味着这个Spring-Boot应用不会止步于此。因为平时iOS业务开发中会经常遇到些阻碍效率的问题，会想出很多“牛逼”的技术方案去解决，但仅仅熟悉Cocoa 框架是实现不了的，少不了服务端的支持，比如最近业余在做的三个需求，【客户端可视化Mock数据：提供可视化的界面去设置Mock网络数据，无需硬编码Mock和减少编译时间】、【客户端可视化一键生成bug单：提供可视化的界面去输入bug描述，并生成bug单，提高研发效率】、【客户端埋点管理平台：提供平台去管理埋点需求、验证埋点、埋点信息自定义展示】，这也是立个flag，技术服务业务，业务必将反哺于技术，19年好好学习服务端知识，再来完善这篇文章 ：）</p>
 <h4 id="2-2-3-管理部分：直接fork-“Ant-Design-Pro”进行改装"><a href="#2-2-3-管理部分：直接fork-“Ant-Design-Pro”进行改装" class="headerlink" title="2.2.3 管理部分：直接fork “Ant Design Pro”进行改装"></a>2.2.3 管理部分：直接fork “Ant Design Pro”进行改装</h4><p><a href="https://pro.ant.design/index-cn" target="_blank" rel="noopener">Ant Design Pro</a> 是蚂蚁金服团队在 Ant Design 的设计规范与组件库基础上推出的一套 React 实现的企业级中后台前端/设计解决方案。基于这个框架可以快速开发后台管理系统，如果你有React Native的开发经验，那么对基于React开发的Ant Design Pro 肯定也是上手很快。本日志系统使用到的 Ant Design Pro 放到了github <a href="https://github.com/HonchWong/HCRDA.git" target="_blank" rel="noopener">https://github.com/HonchWong/HCRDA.git</a></p>
