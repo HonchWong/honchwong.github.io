@@ -88,7 +88,12 @@
 <meta property="og:locale" content="default">
 <meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/vVM4bxEK6sJw3HTtVvJ7V8P8C6icev7tpW2nlwV508s!/b/dL8AAAAAAAAA&bo=EwSQAQAAAAARB7Y!&rf=viewer_4">
 <meta property="og:image" content="https://ask.qcloudimg.com/http-save/yehe-1069749/1xjkx0yal3.jpeg?imageView2/2/w/1620">
-<meta property="og:updated_time" content="2019-02-13T05:26:47.871Z">
+<meta property="og:image" content="http://a3.qpic.cn/psb?/V10JaO4w40EHz4/MZ1g15*Ga7zf4qIONfcfv6LQ8IHnoj45XB.aWzZoHmk!/b/dLYAAAAAAAAA&ek=1&kp=1&pt=0&bo=OAQGBQAAAAADNy0!&tl=1&vuin=625845706&tm=1550034000&sce=60-2-2&rf=viewer_4">
+<meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/kJTUUitkMDOeccHgSUS*vrOV1kgbxyoRkpF1A28zUl0!/b/dLgAAAAAAAAA&bo=1QV7AwAAAAARB5g!&rf=viewer_4">
+<meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/*TmjxEvjz7O7i.fXTw1R9CtQNVyJQr6dFkE8cTKCrQY!/b/dMAAAAAAAAAA&bo=7gJiBQAAAAADB6k!&rf=viewer_4">
+<meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/AWlFLQAzAHzNCOgpMMOzdKSPi1nJBNUebhd8r5xTx84!/b/dL8AAAAAAAAA&bo=3wVBAwAAAAARB6g!&rf=viewer_4">
+<meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/ZPmjxiOZeaUuCCtVfLLSefz3VLNTLGbrahKubrBA3XA!/b/dDIBAAAAAAAA&bo=IAPMAAAAAAARB98!&rf=viewer_4">
+<meta property="og:updated_time" content="2019-02-13T07:21:59.929Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="使用XLog、Spring-Boot、And-Design-Pro搭建日志系统">
 <meta name="twitter:description" content="一、前言：移动端为什么要三方日志系统日志系统用于记录用户行为和数据以及崩溃时的线程调用栈，以帮助程序员解决问题，优化用户体验。 iOS系统就有自带Crash收集应用程序“ReportCrash”来收集App Crash信息，我也深入了解过iOS收集Crash 信息的过程并记录在此 CPU发生异常到生成Crash Log的过程 ， 但用户遇到的很多问题不仅仅是Crash，更何况有些情况仅靠Crash">
@@ -387,10 +392,66 @@
 </blockquote>
 <p>另外mmap 相关的API 如下，参考开源的XLog，你也可以给团队定制基于mmap的日志采集组件</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">FILE *fp = fopen(file_path, &quot;wb+&quot;);</span><br><span class="line">file_num = fileno(fp);</span><br><span class="line">ftruncate(file_num, size);      // 调整size</span><br><span class="line">char *mmap_ptr = (char *)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, file_num, 0);</span><br><span class="line"></span><br><span class="line">// 然后就可以对 mmap_ptr 进行读写了</span><br><span class="line"></span><br><span class="line">munmap(mmap_ptr, mmap_size);    // 解除一个map，内容会写回磁盘</span><br><span class="line">msync(mmap_ptr, mmap_size, MS_ASYNC);  // 同步，异步写回磁盘</span><br><span class="line"></span><br><span class="line">扩容办法：先解除munmap，调大文件大小，重新调 mmap 映射即可</span><br></pre></td></tr></table></figure>
+<p>手淘的SatanWoo 五子棋大佬在解析xlog源码的时候给出了两点使用mmap时需要额外注意的点，<a href="http://satanwoo.github.io/2017/07/30/xlog/" target="_blank" rel="noopener">文章在此</a></p>
+<ul>
+<li>注意点1: 如果我们尝试打开mmap成功了，但是mmap对应的数据地址是NULL，那我们必须停止映射。因为NULL所代表的地址处于内核态，一旦映射了，势必造成Crash。</li>
+<li>注意点2：使用mmap的情况下，如果上次应用断电了、Crash，日志的信息还是存在的，但是并不一定能及时的转换成我们想要的日志文件。因此我们首先检查下mmap文件里面有没有数据，有的话先把这部分转换成日志。</li>
+</ul>
 <h4 id="2-2-2-传输部分：使用Spring-Boot-快速开发Web服务器"><a href="#2-2-2-传输部分：使用Spring-Boot-快速开发Web服务器" class="headerlink" title="2.2.2 传输部分：使用Spring Boot 快速开发Web服务器"></a>2.2.2 传输部分：使用Spring Boot 快速开发Web服务器</h4><p>在网上有很多介绍Spring Boot的文章，蚂蚁金服的一位前辈写了篇 <a href="https://jimmysong.io/posts/spring-boot-quick-start-guide/" target="_blank" rel="noopener">Spring Boot快速开始指南</a> 我看还不错，介绍了Spring-Boot的知识点线路图和基本概念，还有如何快速创建一个Spring Boot 应用，由于我也是照葫芦画瓢，只是使用Spring Boot提供了简单的文件上传和下载功能，暂时无法在这一块深入介绍自己的经验，不过日志系统对应的Spring Boot部分我已经放到了github，感兴趣可以clone 下来跑跑看 <a href="https://github.com/HonchWong/HCRDA-SpringBoot.git" target="_blank" rel="noopener">https://github.com/HonchWong/HCRDA-SpringBoot.git</a></p>
 <p>项目名字是RDA，也就是研发助手的英文，意味着这个Spring-Boot应用不会止步于此。因为平时iOS业务开发中会经常遇到些阻碍效率的问题，会想出很多“牛逼”的技术方案去解决，但仅仅熟悉Cocoa 框架是实现不了的，少不了服务端的支持，比如最近业余在做的三个需求，【客户端可视化Mock数据：提供可视化的界面去设置Mock网络数据，无需硬编码Mock和减少编译时间】、【客户端可视化一键生成bug单：提供可视化的界面去输入bug描述，并生成bug单，提高研发效率】、【客户端埋点管理平台：提供平台去管理埋点需求、验证埋点、埋点信息自定义展示】，这也是立个flag，技术服务业务，业务必将反哺于技术，19年好好学习服务端知识，再来完善这篇文章 ：）</p>
 <h4 id="2-2-3-管理部分：直接fork-“Ant-Design-Pro”进行改装"><a href="#2-2-3-管理部分：直接fork-“Ant-Design-Pro”进行改装" class="headerlink" title="2.2.3 管理部分：直接fork “Ant Design Pro”进行改装"></a>2.2.3 管理部分：直接fork “Ant Design Pro”进行改装</h4><p><a href="https://pro.ant.design/index-cn" target="_blank" rel="noopener">Ant Design Pro</a> 是蚂蚁金服团队在 Ant Design 的设计规范与组件库基础上推出的一套 React 实现的企业级中后台前端/设计解决方案。基于这个框架可以快速开发后台管理系统，如果你有React Native的开发经验，那么对基于React开发的Ant Design Pro 肯定也是上手很快。本日志系统使用到的 Ant Design Pro 放到了github <a href="https://github.com/HonchWong/HCRDA.git" target="_blank" rel="noopener">https://github.com/HonchWong/HCRDA.git</a></p>
-<h2 id="三、本日志系统如何使用"><a href="#三、本日志系统如何使用" class="headerlink" title="三、本日志系统如何使用"></a>三、本日志系统如何使用</h2><h2 id="四、改进"><a href="#四、改进" class="headerlink" title="四、改进"></a>四、改进</h2>
+<h2 id="三、本日志系统如何使用"><a href="#三、本日志系统如何使用" class="headerlink" title="三、本日志系统如何使用"></a>三、本日志系统如何使用</h2><p>我已经写了一个Demo 包含了日志系统的采集、传输、管理三部分。需要从github下载两个工程 web服务器工程 <a href="https://github.com/HonchWong/HCRDA-SpringBoot.git" target="_blank" rel="noopener">https://github.com/HonchWong/HCRDA-SpringBoot.git</a> 、 iOS端工程<a href="https://github.com/HonchWong/HCRDA-iOS.git" target="_blank" rel="noopener">https://github.com/HonchWong/HCRDA-iOS.git</a></p>
+<ul>
+<li>本地运行web服务器<ul>
+<li>环境搭建，安装JDK、Maven</li>
+<li>在HCRDA-SpringBoot 目录下执行 mvn spring-boot:run</li>
+</ul>
+</li>
+<li>运行iOS工程<ul>
+<li>pod install 安装依赖</li>
+<li>修改 HCLogFileUploadManager.m 中的 static NSString *_hostURL 为 localhost的ip</li>
+</ul>
+</li>
+</ul>
+<h3 id="3-1-XLog使用"><a href="#3-1-XLog使用" class="headerlink" title="3.1 XLog使用"></a>3.1 XLog使用</h3><ul>
+<li><p>初始化xlog。 涉及四个API，具体调用可以参考Demo工程中的 XLogHelper.m +setupXlog</p>
+<ul>
+<li><code>setxattr([[self xlogFileDirPath] UTF8String], attrName, &amp;attrValue, sizeof(attrValue), 0, 0);</code> 该API是系统库提供，为了防止该路径下的日志文件被 iCloud 同步。</li>
+<li><code>xlogger_SetLevel(kLevelDebug);</code> 设置log级别</li>
+<li><code>appender_set_console_log(true);</code> debug模式下控制台是否打印log</li>
+<li><code>appender_open(kAppednerAsync, [logPath UTF8String], &quot;Test&quot;);</code> 打开log目录下的日志文件，进行一些初始化操作。</li>
+</ul>
+</li>
+<li><p>打log，<code>xlogger_Write(&amp;info, message.UTF8String)</code>，Demo用宏定义封装了该API</p>
+</li>
+<li>需要在APP终止方法applicationWillTerminate中反初始化 <code>appender_close()</code></li>
+</ul>
+<p>以上只是Demo中的使用方式，更多详细API 可以参考xlog的wiki <a href="https://github.com/Tencent/mars/wiki/Mars-iOS%EF%BC%8FOS-X-%E6%8E%A5%E5%8F%A3%E8%AF%A6%E7%BB%86%E8%AF%B4%E6%98%8E" target="_blank" rel="noopener">Mars iOS／OS X 接口详细说明</a>，Demo中对log日志进行加密，appender_open 提供了参数传入公钥，xlog的加密使用可以参考文档 <a href="https://github.com/Tencent/mars/wiki/Xlog-%E5%8A%A0%E5%AF%86%E4%BD%BF%E7%94%A8%E6%8C%87%E5%BC%95" target="_blank" rel="noopener">Xlog 加密使用指引
+</a></p>
+<p><img src="http://a3.qpic.cn/psb?/V10JaO4w40EHz4/MZ1g15*Ga7zf4qIONfcfv6LQ8IHnoj45XB.aWzZoHmk!/b/dLYAAAAAAAAA&amp;ek=1&amp;kp=1&amp;pt=0&amp;bo=OAQGBQAAAAADNy0!&amp;tl=1&amp;vuin=625845706&amp;tm=1550034000&amp;sce=60-2-2&amp;rf=viewer_4" alt="http://a3.qpic.cn/psb?/V10JaO4w40EHz4/MZ1g15*Ga7zf4qIONfcfv6LQ8IHnoj45XB.aWzZoHmk!/b/dLYAAAAAAAAA&amp;ek=1&amp;kp=1&amp;pt=0&amp;bo=OAQGBQAAAAADNy0!&amp;tl=1&amp;vuin=625845706&amp;tm=1550034000&amp;sce=60-2-2&amp;rf=viewer_4"></p>
+<h3 id="3-2-日志上传和下载"><a href="#3-2-日志上传和下载" class="headerlink" title="3.2 日志上传和下载"></a>3.2 日志上传和下载</h3><p>本日志系统日志上传的策略采用白名单的方式，在后台管理系统设置白名单，白名单包含用户唯一标识符uin及对应的上传的日志类型（如数据库or日志log），用户输入白名单中的uin，获取需要上传的日志类型进行日志上传。</p>
+<p>在HCRDA-SpringBoot 目录下执行 mvn spring-boot:run 后，在浏览器中访问 <a href="http://localhost:9080，" target="_blank" rel="noopener">http://localhost:9080，</a> 输入账户admin 密码  123，在用户日志-指定用户中可以看到有白名单中已经有八个，目前Demo 中只实现了【选择日志上传单个文件】和【上传全部日志】</p>
+<p><img src="http://m.qpic.cn/psb?/V10JaO4w40EHz4/kJTUUitkMDOeccHgSUS*vrOV1kgbxyoRkpF1A28zUl0!/b/dLgAAAAAAAAA&amp;bo=1QV7AwAAAAARB5g!&amp;rf=viewer_4" alt="白名单"></p>
+<p>设置白名单后便可在Demo 中走上传流程，操作步骤如下</p>
+<p><img src="http://m.qpic.cn/psb?/V10JaO4w40EHz4/*TmjxEvjz7O7i.fXTw1R9CtQNVyJQr6dFkE8cTKCrQY!/b/dMAAAAAAAAAA&amp;bo=7gJiBQAAAAADB6k!&amp;rf=viewer_4" alt="日志上传"></p>
+<p>在后台管理系统中可以查看和下载上传的日志</p>
+<p><img src="http://m.qpic.cn/psb?/V10JaO4w40EHz4/AWlFLQAzAHzNCOgpMMOzdKSPi1nJBNUebhd8r5xTx84!/b/dL8AAAAAAAAA&amp;bo=3wVBAwAAAAARB6g!&amp;rf=viewer_4" alt="日志查看和下载"></p>
+<h3 id="3-3-查看日志"><a href="#3-3-查看日志" class="headerlink" title="3.3 查看日志"></a>3.3 查看日志</h3><p>我这里并没有对xlog文件进行加密，而是对zip文件进行了加密，而密码用了xor的方式对字符串进行混淆避免用hopper等反汇编工具直接查看，当然这个还不是绝对安全，还是可以通过逆向App，动态调试，获取zip文件的密码，只不过也加大了破解的难度。虽然没有加密，但单行log还是进行了流压缩，需要用这个脚本进行解压<a href="https://github.com/Tencent/mars/blob/master/mars/log/crypt/decode_mars_nocrypt_log_file.py" target="_blank" rel="noopener">decode_mars_nocrypt_log_file</a></p>
+<p>执行脚本 <code>python decode_mars_nocrypt_log_file.py xxx.xlog</code></p>
+<p><img src="http://m.qpic.cn/psb?/V10JaO4w40EHz4/ZPmjxiOZeaUuCCtVfLLSefz3VLNTLGbrahKubrBA3XA!/b/dDIBAAAAAAAA&amp;bo=IAPMAAAAAAARB98!&amp;rf=viewer_4" alt="查看日志"></p>
+<h2 id="四、参考文章"><a href="#四、参考文章" class="headerlink" title="四、参考文章"></a>四、参考文章</h2><ul>
+<li><a href="http://satanwoo.github.io/2017/07/30/xlog/" target="_blank" rel="noopener">手淘五子棋大佬的《微信高性能线上日志系统xlog剖析<br>》</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzA3NTYzODYzMg%3D%3D&amp;mid=2653578220&amp;idx=3&amp;sn=5691bdd82ae0715ab12fd6b849f74aee&amp;chksm=84b3b1ebb3c438fddf86bf74e232fa14222932ebd6d6439bed04ad17d5e64e9270d4ab460f64&amp;scene=4" target="_blank" rel="noopener">【Dev Club 分享】微信mars 的高性能日志模块 xlog</a></li>
+<li><a href="https://www.jianshu.com/p/f53b4575d3ae" target="_blank" rel="noopener">从Mars的Xlog组件学习日志系统
+</a></li>
+<li><a href="https://github.com/Tencent/mars/wiki/Mars-iOS%EF%BC%8FOS-X-%E6%8E%A5%E5%85%A5%E6%8C%87%E5%8D%97" target="_blank" rel="noopener">Mars iOS／OS X 接入指南
+</a></li>
+<li><a href="https://github.com/Tencent/mars/wiki/Mars-iOS%EF%BC%8FOS-X-%E6%8E%A5%E5%8F%A3%E8%AF%A6%E7%BB%86%E8%AF%B4%E6%98%8E" target="_blank" rel="noopener">Mars iOS／OS X 接口详细说明
+</a></li>
+<li><a href="https://github.com/Tencent/mars/wiki/Xlog-%E5%8A%A0%E5%AF%86%E4%BD%BF%E7%94%A8%E6%8C%87%E5%BC%95" target="_blank" rel="noopener">Xlog 加密使用指引
+</a></li>
+</ul>
+
       
     </div>
     
@@ -554,7 +615,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言：移动端为什么要三方日志系统"><span class="nav-number">1.</span> <span class="nav-text">一、前言：移动端为什么要三方日志系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、技术选型：本日志系统的技术栈"><span class="nav-number">2.</span> <span class="nav-text">二、技术选型：本日志系统的技术栈</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-最高优先级需求：稳定的日志传输服务和可视化的日志管理"><span class="nav-number">2.1.</span> <span class="nav-text">2.1 最高优先级需求：稳定的日志传输服务和可视化的日志管理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-1-1-Seafile-个人网盘-CocoaLumberjack-日志采集"><span class="nav-number">2.1.1.</span> <span class="nav-text">2.1.1 Seafile 个人网盘 + CocoaLumberjack 日志采集</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-方案优化"><span class="nav-number">2.2.</span> <span class="nav-text">2.2 方案优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-1-采集部分：高性能日志采集组件-XLog"><span class="nav-number">2.2.1.</span> <span class="nav-text">2.2.1 采集部分：高性能日志采集组件 XLog</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#流畅性是首要考虑"><span class="nav-number">2.2.1.1.</span> <span class="nav-text">流畅性是首要考虑</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#保证流畅性无法兼顾完整性"><span class="nav-number">2.2.1.2.</span> <span class="nav-text">保证流畅性无法兼顾完整性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#mmap-保证流畅性和完整性"><span class="nav-number">2.2.1.3.</span> <span class="nav-text">mmap 保证流畅性和完整性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#xlog-还保证了-安全性-和-容错性"><span class="nav-number">2.2.1.4.</span> <span class="nav-text">xlog 还保证了 安全性 和 容错性</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-2-传输部分：使用Spring-Boot-快速开发Web服务器"><span class="nav-number">2.2.2.</span> <span class="nav-text">2.2.2 传输部分：使用Spring Boot 快速开发Web服务器</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-3-管理部分：直接fork-“Ant-Design-Pro”进行改装"><span class="nav-number">2.2.3.</span> <span class="nav-text">2.2.3 管理部分：直接fork “Ant Design Pro”进行改装</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、本日志系统如何使用"><span class="nav-number">3.</span> <span class="nav-text">三、本日志系统如何使用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、改进"><span class="nav-number">4.</span> <span class="nav-text">四、改进</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一、前言：移动端为什么要三方日志系统"><span class="nav-number">1.</span> <span class="nav-text">一、前言：移动端为什么要三方日志系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#二、技术选型：本日志系统的技术栈"><span class="nav-number">2.</span> <span class="nav-text">二、技术选型：本日志系统的技术栈</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-最高优先级需求：稳定的日志传输服务和可视化的日志管理"><span class="nav-number">2.1.</span> <span class="nav-text">2.1 最高优先级需求：稳定的日志传输服务和可视化的日志管理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-1-1-Seafile-个人网盘-CocoaLumberjack-日志采集"><span class="nav-number">2.1.1.</span> <span class="nav-text">2.1.1 Seafile 个人网盘 + CocoaLumberjack 日志采集</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-方案优化"><span class="nav-number">2.2.</span> <span class="nav-text">2.2 方案优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-1-采集部分：高性能日志采集组件-XLog"><span class="nav-number">2.2.1.</span> <span class="nav-text">2.2.1 采集部分：高性能日志采集组件 XLog</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#流畅性是首要考虑"><span class="nav-number">2.2.1.1.</span> <span class="nav-text">流畅性是首要考虑</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#保证流畅性无法兼顾完整性"><span class="nav-number">2.2.1.2.</span> <span class="nav-text">保证流畅性无法兼顾完整性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#mmap-保证流畅性和完整性"><span class="nav-number">2.2.1.3.</span> <span class="nav-text">mmap 保证流畅性和完整性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#xlog-还保证了-安全性-和-容错性"><span class="nav-number">2.2.1.4.</span> <span class="nav-text">xlog 还保证了 安全性 和 容错性</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-2-传输部分：使用Spring-Boot-快速开发Web服务器"><span class="nav-number">2.2.2.</span> <span class="nav-text">2.2.2 传输部分：使用Spring Boot 快速开发Web服务器</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-3-管理部分：直接fork-“Ant-Design-Pro”进行改装"><span class="nav-number">2.2.3.</span> <span class="nav-text">2.2.3 管理部分：直接fork “Ant Design Pro”进行改装</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#三、本日志系统如何使用"><span class="nav-number">3.</span> <span class="nav-text">三、本日志系统如何使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-XLog使用"><span class="nav-number">3.1.</span> <span class="nav-text">3.1 XLog使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-日志上传和下载"><span class="nav-number">3.2.</span> <span class="nav-text">3.2 日志上传和下载</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-查看日志"><span class="nav-number">3.3.</span> <span class="nav-text">3.3 查看日志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#四、参考文章"><span class="nav-number">4.</span> <span class="nav-text">四、参考文章</span></a></li></ol></div>
             
 
           </div>
