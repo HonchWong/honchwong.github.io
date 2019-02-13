@@ -93,7 +93,7 @@
 <meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/*TmjxEvjz7O7i.fXTw1R9CtQNVyJQr6dFkE8cTKCrQY!/b/dMAAAAAAAAAA&bo=7gJiBQAAAAADB6k!&rf=viewer_4">
 <meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/AWlFLQAzAHzNCOgpMMOzdKSPi1nJBNUebhd8r5xTx84!/b/dL8AAAAAAAAA&bo=3wVBAwAAAAARB6g!&rf=viewer_4">
 <meta property="og:image" content="http://m.qpic.cn/psb?/V10JaO4w40EHz4/ZPmjxiOZeaUuCCtVfLLSefz3VLNTLGbrahKubrBA3XA!/b/dDIBAAAAAAAA&bo=IAPMAAAAAAARB98!&rf=viewer_4">
-<meta property="og:updated_time" content="2019-02-13T07:21:59.929Z">
+<meta property="og:updated_time" content="2019-02-13T07:34:52.057Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="使用XLog、Spring-Boot、And-Design-Pro搭建日志系统">
 <meta name="twitter:description" content="一、前言：移动端为什么要三方日志系统日志系统用于记录用户行为和数据以及崩溃时的线程调用栈，以帮助程序员解决问题，优化用户体验。 iOS系统就有自带Crash收集应用程序“ReportCrash”来收集App Crash信息，我也深入了解过iOS收集Crash 信息的过程并记录在此 CPU发生异常到生成Crash Log的过程 ， 但用户遇到的很多问题不仅仅是Crash，更何况有些情况仅靠Crash">
@@ -404,7 +404,9 @@
 <ul>
 <li>本地运行web服务器<ul>
 <li>环境搭建，安装JDK、Maven</li>
+<li>HCRDA-SpringBoot/src/main/resources/application.properties 修改配置文件中的用户日志文件夹位置，比如，这个是我本地存放的位置<code>userlog.dir.path=/Users/huanghongchang/Desktop/userLog</code></li>
 <li>在HCRDA-SpringBoot 目录下执行 mvn spring-boot:run</li>
+<li>访问 <a href="http://localhost:9080" target="_blank" rel="noopener">http://localhost:9080</a></li>
 </ul>
 </li>
 <li>运行iOS工程<ul>
